@@ -27,7 +27,7 @@ class Face_Recognition:
 
         # Bộ phát hiện và xử lý khuôn mặt sử dụng MTCNN và aligned face của facenet_pytorch
         self.mtcnn_detector = MTCNN(image_size=160, margin=0, min_face_size=20, thresholds=[0.6, 0.7, 0.7], 
-                                   factor=0.709, post_process=True, keep_all=True
+                                   factor=0.5, post_process=True, keep_all=True
                               )
         
         # Mô hình lấy đặc trưng khuôn mặt của openface
@@ -57,17 +57,29 @@ class Face_Recognition:
         self.preprocess_face = []
         self.bounding_box = []
         if self.type == "hog_openface":
-            rects = self.hog_detector(frame, 3)
-            for i in rects:
+            # start = timeit.default_timer()
+            rects = self.hog_detector(frame, 0)
+            # end = timeit.default_timer()
+            # print("FACE BB DETECT RUNTIME: "+str(end-start))
+            for idx, i in enumerate(rects):
+                # start = timeit.default_timer()
                 preprocess = self.face_aligner.align(imgDim = 96, rgbImg = frame, bb = i, landmarkIndices=openface.AlignDlib.OUTER_EYES_AND_NOSE)
+                # end = timeit.default_timer()
+                # print("FACE "+str(idx)+" ALIGNMENT RUNTIME: "+str(end-start))
                 self.bounding_box.append((i.left(), i.top(), i.right(), i.bottom()))
                 self.preprocess_face.append(preprocess)
         elif self.type == "mtcnn_facenet":
+            start = timeit.default_timer()
             rects, _ = self.mtcnn_detector.detect(frame)
+            end = timeit.default_timer()
+            print("FACE BB DETECT RUNTIME: "+str(end-start))
             if not rects is None:
                 for i in rects:
                     self.bounding_box.append(i)
+                start = timeit.default_timer()
                 self.preprocess_face.append(self.mtcnn_detector(frame))
+                end = timeit.default_timer()
+                print("FACE ALIGNMENT RUNTIME: "+str(end-start))
     
     def extract_feature(self):
         self.feature_list = []
@@ -205,7 +217,8 @@ class Face_Recognition:
 if __name__ == '__main__':
     sample_path = "/Users/trananhvu/Documents/CV/CV_internship/face_recognition/step_by_step_face_recognition/sample"
     face_recognition = Face_Recognition("mtcnn_facenet", "svm")
-    # face_recognition.face_recognition_image(os.path.join(sample_path, "test.webp"), 
-    #                                          sample_path)
-    face_recognition.face_recognition_video_save(os.path.join(sample_path, "Robert Downey Jr  Scarlett Johansson Mark Ruffalo Chris Hemsworth Interview.mp4"), 
-                                                 sample_path)
+    face_recognition.face_recognition_image(os.path.join(sample_path, "test2.webp"), 
+                                             sample_path)
+    # face_recognition.face_recognition_video_save(os.path.join(sample_path, "Robert Downey Jr  Scarlett Johansson Mark Ruffalo Chris Hemsworth Interview.mp4"), 
+    #                                              sample_path)
+    # face_recognition.face_recognition_video(os.path.join(sample_path, "Robert Downey Jr  Scarlett Johansson Mark Ruffalo Chris Hemsworth Interview.mp4"))
