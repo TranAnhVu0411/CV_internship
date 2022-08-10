@@ -1,4 +1,4 @@
-from sklearn.metrics.pairwise import euclidean_distances
+from sklearn.metrics.pairwise import euclidean_distances, cosine_similarity
 import numpy as np
 import cv2
 import dlib
@@ -11,18 +11,17 @@ path = "/Users/trananhvu/Documents/CV/CV_internship"
 preprocess_model_path = os.path.join(path, "model")
 
 class Face_Recognition:
-    def __init__(self, threshold):
-        # threshold phân biệt mặt trong dataset / mặt unknown 
+    def __init__(self, type, threshold=0.75):
         self.threshold = threshold
-        # Bộ phát hiện và xử lý khuôn mặt sử dụng HOG và aligned face của Openface
+        self.type = type
+        # Bộ phát hiện và xử lý khuôn mặt sử dụng HOG và aligned face của Openfacqe
         self.hog_detector = dlib.get_frontal_face_detector()
         self.face_aligner = openface.AlignDlib(os.path.join(preprocess_model_path, "shape_predictor_68_face_landmarks.dat"))
         # Mô hình lấy đặc trưng khuôn mặt của openface
         self.openface = cv2.dnn.readNetFromTorch(os.path.join(preprocess_model_path, "nn4.small2.v1.t7"))
-        # Vector đại diện cho từng đối tượng
-        with open('/Users/trananhvu/Documents/CV/data/representative.json') as json_file:
-            self.representative = json.load(json_file)
-
+        with open('/Users/trananhvu/Documents/CV/data/distance_face_recognition/feature.json') as json_file:
+            self.feature = json.load(json_file)
+     
     def face_detection(self, frame):
         self.preprocess_face = []
         self.bounding_box = []
@@ -48,16 +47,35 @@ class Face_Recognition:
     
     def face_recognition(self):
         self.predict = []
-        for feat in self.feature_list:
-            candidate = {}
-            for label, vector in self.representative.items():
-                distance = euclidean_distances(np.array(feat).reshape(1, -1), np.array(vector).reshape(1, -1))[0][0]
-                if distance<=self.threshold:
-                    candidate[label]=distance
-            if len(candidate)==0:
-                self.predict.append("Unknown")
-            else:
-                self.predict.append(min(candidate, key=candidate.get))
+        if self.type == 'compare_all_naive':
+            for feat in self.feature_list:
+                candidate = {}
+                for label, vectors in self.feature.items():
+                    if label not in candidate:
+                        candidate[label]=[]
+                    for vector in vectors:
+                        candidate[label].append(cosine_similarity(np.array(feat).reshape(1, -1), np.array(vector).reshape(1, -1))[0][0])
+                    candidate[label] = max(candidate[label])
+                best_can = max(candidate, key=candidate.get)
+                if candidate[best_can]>=self.threshold:
+                    self.predict.append((best_can, candidate[best_can]))
+                else:
+                    self.predict.append(("Unknown", candidate[best_can]))
+        elif self.type == 'compare_all_neighbour':
+            for feat in self.feature_list:
+                candidate_label = []
+                candidate_distance = []
+                for label, vectors in self.feature.items():
+                    for vector in vectors:
+                        distance = euclidean_distances(np.array(feat).reshape(1, -1), np.array(vector).reshape(1, -1))[0][0]
+                        if distance<self.threshold:
+                            candidate_label.append(label)
+                            candidate_distance.append(distance)
+                if len(candidate_label)==0:
+                    self.predict.append(("Unknown", 0))
+                else:
+                    print(set(candidate_label))
+                    self.predict.append((max(candidate_label, key = candidate_label.count), 0))
     
     def draw_bb_box(self, frame):
         # start_extract_feature = timeit.default_timer()
@@ -81,10 +99,10 @@ class Face_Recognition:
             w = endX - startX
             h = endY - startY
 
-            predict_name = self.predict[idx]
+            predict_name, predict_prob = self.predict[idx]
             # print(predict_name)
             cv2.rectangle(frame, (startX, startY), (startX+w, startY+h), (0, 255, 0), 2)
-            cv2.putText(frame, predict_name, (startX, startY), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (36,255,12), 2)
+            cv2.putText(frame, predict_name+": "+"%.2f" % predict_prob, (startX, startY), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (36,255,12), 2)
 
         return frame
 
@@ -176,9 +194,12 @@ class Face_Recognition:
 if __name__ == '__main__':
     sample_path = "/Users/trananhvu/Documents/CV/CV_internship/face_recognition/sample"
     save_path = "/Users/trananhvu/Documents/CV/CV_internship/face_recognition/cosine_distance_face_recognition/sample"
-    face_recognition = Face_Recognition(threshold=0.9)
-    # face_recognition.face_recognition_image(os.path.join(sample_path, "test2.webp"), 
+    face_recognition = Face_Recognition(type = "compare_all_neighbour")
+    # face_recognition.face_recognition_image("/Users/trananhvu/Documents/CV/photo-1652629284797-1652629285007183004729.jpeg", 
+    #                                         save_path)
+    # face_recognition.face_recognition_image(os.path.join(sample_path, "test.webp"), 
     #                                          save_path)
     # face_recognition.face_recognition_video_save(os.path.join(sample_path, "Robert Downey Jr  Scarlett Johansson Mark Ruffalo Chris Hemsworth Interview.mp4"), 
     #                                              save_path)
     face_recognition.face_recognition_video(os.path.join(sample_path, "Robert Downey Jr  Scarlett Johansson Mark Ruffalo Chris Hemsworth Interview.mp4"))
+    # face_recognition.face_recognition_video("/Users/trananhvu/Documents/CV/data/video/the best of tom holland and rdj.mp4")

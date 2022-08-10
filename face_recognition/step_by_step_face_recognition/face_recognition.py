@@ -169,8 +169,9 @@ class Face_Recognition:
         if (cap.isOpened()== False): 
             print("Error opening video file")
         save_file_name = os.path.splitext(os.path.basename(video_path))[0]+"_"+self.type+"_"+self.clf_type+".mp4"
-        writer = cv2.VideoWriter(os.path.join(save_path, save_file_name),
-                                 int(cap.get(cv2.CAP_PROP_FOURCC)),int(cap.get(cv2.CAP_PROP_FPS)), 
+        writer = cv2.VideoWriter(os.path.join(save_path, save_file_name), cv2.VideoWriter_fourcc(*'FMP4'),    
+                                #  int(cap.get(cv2.CAP_PROP_FOURCC)),
+                                 int(cap.get(cv2.CAP_PROP_FPS)), 
                                  (int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)), int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))))
 
         count=0
@@ -218,9 +219,11 @@ if __name__ == '__main__':
     sample_path = "/Users/trananhvu/Documents/CV/CV_internship/face_recognition/sample"
     save_path = "/Users/trananhvu/Documents/CV/CV_internship/face_recognition/step_by_step_face_recognition/sample"
 
-    face_recognition = Face_Recognition("mtcnn_facenet", "svm")
-    face_recognition.face_recognition_image(os.path.join(sample_path, "test.webp"), 
-                                             save_path)
+    face_recognition = Face_Recognition("hog_openface", "svm")
+    # face_recognition.face_recognition_image("/Users/trananhvu/Documents/CV/photo-1652629284797-1652629285007183004729.jpeg", 
+    #                                          save_path)
+    # face_recognition.face_recognition_image(os.path.join(sample_path, "test.webp"), 
+    #                                          save_path)
     # face_recognition.face_recognition_video_save(os.path.join(sample_path, "Robert Downey Jr  Scarlett Johansson Mark Ruffalo Chris Hemsworth Interview.mp4"), 
     #                                              save_path)
-    # face_recognition.face_recognition_video(os.path.join(sample_path, "Robert Downey Jr  Scarlett Johansson Mark Ruffalo Chris Hemsworth Interview.mp4"))
+    face_recognition.face_recognition_video(os.path.join(sample_path, "Robert Downey Jr  Scarlett Johansson Mark Ruffalo Chris Hemsworth Interview.mp4"))
