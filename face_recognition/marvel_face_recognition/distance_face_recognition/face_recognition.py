@@ -1,105 +1,89 @@
+from sklearn.metrics.pairwise import euclidean_distances, cosine_similarity
+import numpy as np
 import cv2
 import dlib
 import openface
-from facenet_pytorch import MTCNN, InceptionResnetV1
-import joblib
 import json
 import os
 import timeit
+import pandas as pd
 import create_directory
 
-path = "/Users/trananhvu/Documents/CV/CV_internship"
 preprocess_model_path = create_directory.detection_preprocess_model_dir
-recognition_model_path = create_directory.recognition_model_dir
 
 class Face_Recognition:
-    def __init__(self, type, clf_type):
+    def __init__(self, type, threshold=0.6):
+        self.threshold = threshold
         self.type = type
-        self.clf_type = clf_type
-
-        if self.type == "hog_openface":
-            self.feature_size = 128
-        elif self.type == "mtcnn_facenet":
-            self.feature_size = 512
-
-        # Bộ phát hiện và xử lý khuôn mặt sử dụng HOG và aligned face của Openface
+        # Bộ phát hiện và xử lý khuôn mặt sử dụng HOG và aligned face của Openfacqe
         self.hog_detector = dlib.get_frontal_face_detector()
         self.face_aligner = openface.AlignDlib(os.path.join(preprocess_model_path, "shape_predictor_68_face_landmarks.dat"))
-
-        # Bộ phát hiện và xử lý khuôn mặt sử dụng MTCNN và aligned face của facenet_pytorch
-        self.mtcnn_detector = MTCNN(image_size=160, margin=0, min_face_size=20, thresholds=[0.6, 0.7, 0.7], 
-                                   factor=0.5, post_process=True, keep_all=True
-                              )
-        
         # Mô hình lấy đặc trưng khuôn mặt của openface
         self.openface = cv2.dnn.readNetFromTorch(os.path.join(preprocess_model_path, "nn4.small2.v1.t7"))
-
-        # Mô hình lấy đặc trưng khuôn mặt của facenet
-        self.facenet = InceptionResnetV1(pretrained='vggface2', dropout_prob=0.5, num_classes=6, classify=False).eval()
-
-        # Load model
-        if self.type == "hog_openface":
-            if self.clf_type == "svm":
-                self.model = joblib.load(os.path.join(recognition_model_path, "hog_openface_svm_model.sav"))
-            elif self.clf_type == "knn":
-                self.model = joblib.load(os.path.join(recognition_model_path, "hog_openface_knn_model.sav"))
-        elif self.type == "mtcnn_facenet":
-            if self.clf_type == "svm":
-                self.model = joblib.load(os.path.join(recognition_model_path, "mtcnn_facenet_svm_model.sav"))
-            elif self.clf_type == "knn":
-                self.model = joblib.load(os.path.join(recognition_model_path, "mtcnn_facenet_knn_model.sav"))
-
-        # idx to face
-        with open(os.path.join(recognition_model_path, 'label2idx.json')) as json_file:
-            face2idx = json.load(json_file)
-        self.idx2face = dict([(value, key) for key, value in face2idx.items()])
-
+        with open(os.path.join(create_directory.marvel_data_dir, 'distance_face_recognition/feature.json')) as json_file:
+            self.feature = json.load(json_file)
+     
     def face_detection(self, frame):
         self.preprocess_face = []
         self.bounding_box = []
-        if self.type == "hog_openface":
+        # start = timeit.default_timer()
+        rects = self.hog_detector(frame, 0)
+        # end = timeit.default_timer()
+        # print("FACE BB DETECT RUNTIME: "+str(end-start))
+        for idx, i in enumerate(rects):
             # start = timeit.default_timer()
-            rects = self.hog_detector(frame, 0)
+            preprocess = self.face_aligner.align(imgDim = 96, rgbImg = frame, bb = i, landmarkIndices=openface.AlignDlib.OUTER_EYES_AND_NOSE)
             # end = timeit.default_timer()
-            # print("FACE BB DETECT RUNTIME: "+str(end-start))
-            for idx, i in enumerate(rects):
-                # start = timeit.default_timer()
-                preprocess = self.face_aligner.align(imgDim = 96, rgbImg = frame, bb = i, landmarkIndices=openface.AlignDlib.OUTER_EYES_AND_NOSE)
-                # end = timeit.default_timer()
-                # print("FACE "+str(idx)+" ALIGNMENT RUNTIME: "+str(end-start))
-                self.bounding_box.append((i.left(), i.top(), i.right(), i.bottom()))
-                self.preprocess_face.append(preprocess)
-        elif self.type == "mtcnn_facenet":
-            start = timeit.default_timer()
-            rects, _ = self.mtcnn_detector.detect(frame)
-            end = timeit.default_timer()
-            print("FACE BB DETECT RUNTIME: "+str(end-start))
-            if not rects is None:
-                for i in rects:
-                    self.bounding_box.append(i)
-                start = timeit.default_timer()
-                self.preprocess_face.append(self.mtcnn_detector(frame))
-                end = timeit.default_timer()
-                print("FACE ALIGNMENT RUNTIME: "+str(end-start))
+            # print("FACE "+str(idx)+" ALIGNMENT RUNTIME: "+str(end-start))
+            self.bounding_box.append((i.left(), i.top(), i.right(), i.bottom()))
+            self.preprocess_face.append(preprocess)
     
     def extract_feature(self):
         self.feature_list = []
-        if self.type == "hog_openface":
-            for image in self.preprocess_face:
-                blob = cv2.dnn.blobFromImage(image, 1./255, (96, 96), (0,0,0))
-                self.openface.setInput(blob)
-                feature = self.openface.forward()
-                self.feature_list.append(feature.reshape(self.feature_size).tolist())
-        elif self.type == "mtcnn_facenet":
-            features = self.facenet(self.preprocess_face[0])
-            for i in features:
-                self.feature_list.append(i.tolist())
+        for image in self.preprocess_face:
+            blob = cv2.dnn.blobFromImage(image, 1./255, (96, 96), (0,0,0))
+            self.openface.setInput(blob)
+            feature = self.openface.forward()
+            self.feature_list.append(feature.reshape(128).tolist())
     
     def face_recognition(self):
-        predict_idx = self.model.predict(self.feature_list)
         self.predict = []
-        for i in predict_idx:
-            self.predict.append(self.idx2face[i])  
+        if self.type == 'nearest':
+            for feat in self.feature_list:
+                candidate = {}
+                for label, vectors in self.feature.items():
+                    if label not in candidate:
+                        candidate[label]=[]
+                    for vector in vectors:
+                        candidate[label].append(euclidean_distances(np.array(feat).reshape(1, -1), np.array(vector).reshape(1, -1))[0][0])
+                    candidate[label] = min(candidate[label])
+                best_can = min(candidate, key=candidate.get)
+                if candidate[best_can]>=self.threshold:
+                    self.predict.append((best_can, candidate[best_can]))
+                else:
+                    self.predict.append(("Unknown", candidate[best_can]))
+        elif self.type == 'neighbour':
+            for feat in self.feature_list:
+                candidate_label = []
+                candidate_distance = []
+                for label, vectors in self.feature.items():
+                    for vector in vectors:
+                        distance = euclidean_distances(np.array(feat).reshape(1, -1), np.array(vector).reshape(1, -1))[0][0]
+                        if distance<self.threshold:
+                            candidate_label.append(label)
+                            candidate_distance.append(distance)
+                if len(candidate_label)==0:
+                    self.predict.append(("Unknown", 0))
+                else:
+                    df_candidate=pd.DataFrame({'Label': candidate_label})
+                    df_candidate_count = pd.DataFrame(df_candidate["Label"].value_counts().to_dict().items(), columns=['Label','Count'])
+                    list_candidate = list(df_candidate_count[df_candidate_count['Count']==max(df_candidate_count['Count'])]['Label'])
+                    if len(list_candidate) == 1:
+                        self.predict.append((max(candidate_label, key = candidate_label.count), 0))
+                    else:
+                        df_candidate_distance=pd.DataFrame({'Label': candidate_label, 'Distance': candidate_distance})
+                        best_candidate = df_candidate_distance[df_candidate_distance['Label'].isin(list_candidate)].groupby('Label').mean().to_dict()['Distance']
+                        self.predict.append((min(best_candidate, key = best_candidate.get),0))
     
     def draw_bb_box(self, frame):
         # start_extract_feature = timeit.default_timer()
@@ -123,10 +107,10 @@ class Face_Recognition:
             w = endX - startX
             h = endY - startY
 
-            predict_name = self.predict[idx]
+            predict_name, predict_prob = self.predict[idx]
             # print(predict_name)
             cv2.rectangle(frame, (startX, startY), (startX+w, startY+h), (0, 255, 0), 2)
-            cv2.putText(frame, predict_name, (startX, startY), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (36,255,12), 2)
+            cv2.putText(frame, predict_name+": "+"%.2f" % predict_prob, (startX, startY), cv2.FONT_HERSHEY_SIMPLEX, 0.45, (36,255,12), 2)
 
         return frame
 
@@ -176,7 +160,7 @@ class Face_Recognition:
         if len(self.bounding_box)!=0:
             frame=self.draw_bb_box(frame)
         print("COMPLETE FACE RECOGNITION")
-        save_file_name = os.path.splitext(os.path.basename(image_path))[0]+"_"+self.type+"_"+self.clf_type+".jpeg"
+        save_file_name = os.path.splitext(os.path.basename(image_path))[0]+"_"+self.type+".jpeg"
         cv2.imwrite(os.path.join(save_path, save_file_name), frame)
         # Display the resulting frame
         cv2.imshow('Frame', frame)
@@ -184,7 +168,7 @@ class Face_Recognition:
 if __name__ == '__main__':
     sample_path = create_directory.sample_dir
     save_path = create_directory.result_dir
-    face_recognition = Face_Recognition("hog_openface", "svm")
+    face_recognition = Face_Recognition(type = "nearest")
     face_recognition.face_recognition_image(os.path.join(sample_path, "test3.jpeg"), 
                                              save_path)
     # face_recognition.face_recognition_video(os.path.join(sample_path, "Robert Downey Jr  Scarlett Johansson Mark Ruffalo Chris Hemsworth Interview.mp4"))
