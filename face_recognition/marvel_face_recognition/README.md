@@ -9,4 +9,5 @@ Thử nghiệm trên 2 phương pháp:
 ## Dataset
 - Data training: https://www.kaggle.com/datasets/hereisburak/pins-face-recognition
 - Data testing: https://www.kaggle.com/datasets/rawatjitesh/avengers-face-recognition (Không có ảnh Tom Holland)
-- Ảnh Tom Holland: sử dụng google image để crawl về (Tham khảo trên: https://pyimagesearch.com/2017/12/04/how-to-create-a-deep-learning-dataset-using-google-images/)
+    + Ảnh Tom Holland: sử dụng google image để crawl về (Tham khảo trên: https://pyimagesearch.com/2017/12/04/how-to-create-a-deep-learning-dataset-using-google-images/)
+    + Ảnh Unknown: sử dụng các ảnh trong bộ dữ liệu LWF
