@@ -27,3 +27,9 @@ Về các bước nhận diện khuôn mặt trong ảnh và video, ta tổng h�
 ## Yếu điểm của phần code này
 - Phương pháp 2 chạy rất chậm đối với ảnh (mất khoảng hơn 2s cho một ảnh) do không dùng gpu để chạy, vì vậy khó để chạy realtime nhưng độ chính xác tốt hơn so với phương pháp 1. Phương pháp đầu tiên có phần nhanh hơn về mặt thời gian, nhưng độ chính xác không bằng
 - Các mô hình huấn luyện cuối của cả hai phương pháp là các mô hình phân loại, đối với những đối tượng nằm trong các class xác định thì khả năng dự đoán khá tốt, nhưng đối với những đối tượng nằm trong class Unknown thì dự đoán khá là tệ
+
+## Hướng dẫn chạy code
+- Có thể sử dụng luôn bộ nhận diện khuôn mặt (chạy file face_recognition.py) hoặc chạy lần lượt từng file theo các bước:
+    + Tải về thư mục dataset lưu ở trong drive
+    + Thay đổi đường dẫn thư mục dataset và thư mục code git trên máy tính trong file create_directory
+    + Chạy theo thứ tự face_preprocess.ipynb => extract_feature_without_finetune.ipynb => train_face_recognition.ipynb để lấy được lần lượt ảnh đã được xử lý, vector đặc trưng của ảnh và các mô hình nhận diện khuôn mặt svm và knn (các mô hình này có sẵn trong thư mục code git)

@@ -17,3 +17,10 @@ Về các bước trong quá trình nhận diện khuôn mặt sử dụng phư�
 ## Kết quả thử nghiệm
 - Đối với ảnh: thử nghiệm trên 3 ảnh test, test1 và test2 trong phần sample (CV_internship/face_recognition/marvel_face_recognition/sample), kết quả ở trong phần result (CV_internship/face_recognition/marvel_face_recognition/step_by_step_face_recognition/result)
 - Đối với video: thử nghiệm đối với một video trong phần sample
+
+## Hướng dẫn chạy code
+- Điều kiện: Phải có sẵn thư mục dataset download từ drive, cũng như là các thư mục về các vector đặc trưng (Xem kĩ hơn trong phần hướng dẫn chạy code của step_by_step_face_recognition)
+- Thay đổi đường dẫn thư mục dataset và thư mục code git trong file create_directory.py
+- Để tìm threshold: chạy file face_recognition_stable.ipynb
+- Để sử dụng bộ nhận diện khuôn mặt: chạy file face_recognition.py
+- Để xem khả năng phân cụm: chạy file face_clustering.py
