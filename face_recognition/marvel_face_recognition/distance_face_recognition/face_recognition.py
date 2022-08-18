@@ -20,7 +20,7 @@ class Face_Recognition:
         self.face_aligner = openface.AlignDlib(os.path.join(preprocess_model_path, "shape_predictor_68_face_landmarks.dat"))
         # Mô hình lấy đặc trưng khuôn mặt của openface
         self.openface = cv2.dnn.readNetFromTorch(os.path.join(preprocess_model_path, "nn4.small2.v1.t7"))
-        with open(os.path.join(create_directory.marvel_data_dir, 'distance_face_recognition/feature.json')) as json_file:
+        with open(os.path.join(create_directory.marvel_data_dir, 'distance_face_recognition/fixed_database.json')) as json_file:
             self.feature = json.load(json_file)
      
     def face_detection(self, frame):
