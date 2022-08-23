@@ -20,7 +20,7 @@ Về các bước trong quá trình nhận diện khuôn mặt sử dụng phư�
 Trong bài này ta sử dụng 2 metric:
 - Euclidian Distance:
 
-$$ D_{eulclidean}(X,Y) = \sqrt{\sum_{i=1}^{n}(X_i-Y_i)^{2}} $$]
+$$ D_{eulclidean}(X,Y) = \sqrt{\sum_{i=1}^{n}(X_i-Y_i)^{2}} $$
 - Cosine Similarity:
 
 $$ similarity(\cos\theta) = \frac {X \cdotp Y}{\Vert X \Vert \Vert Y \Vert} = \frac {\sqrt{\sum_{i=1}^{n}X_i Y_i}}{\sqrt{\sum_{i=1}^{n}X_i^2}\sqrt{\sum_{i=1}^{n}Y_i^2}}$$
