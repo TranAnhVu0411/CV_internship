@@ -19,9 +19,11 @@ Về các bước trong quá trình nhận diện khuôn mặt sử dụng phư�
 ## Các metric so sánh
 Trong bài này ta sử dụng 2 metric:
 - Euclidian Distance:
-$$ D_{eulclidean}(X,Y) = \sqrt{\sum_{i=1}^{n}(X_i-Y_i)^{2}} $$
+
+![$$ D_{eulclidean}(X,Y) = \sqrt{\sum_{i=1}^{n}(X_i-Y_i)^{2}} $$](https://latex.codecogs.com/svg.latex?x%3D%5Cfrac%7B-b%5Cpm%5Csqrt%7Bb%5E2-4ac%7D%7D%7B2a%7D)
 - Cosine Similarity:
-$$ similarity(\cos\theta) = \frac {X \cdotp Y}{\Vert X \Vert \Vert Y \Vert} = \frac {\sqrt{\sum_{i=1}^{n}X_i Y_i}}{\sqrt{\sum_{i=1}^{n}X_i^2}\sqrt{\sum_{i=1}^{n}Y_i^2}}$$
+
+![$$ similarity(\cos\theta) = \frac {X \cdotp Y}{\Vert X \Vert \Vert Y \Vert} = \frac {\sqrt{\sum_{i=1}^{n}X_i Y_i}}{\sqrt{\sum_{i=1}^{n}X_i^2}\sqrt{\sum_{i=1}^{n}Y_i^2}}$$](https://latex.codecogs.com/svg.latex?x%3D%5Cfrac%7B-b%5Cpm%5Csqrt%7Bb%5E2-4ac%7D%7D%7B2a%7D)
 
 ## Kết quả thử nghiệm
 - Đối với ảnh: thử nghiệm trên 3 ảnh test, test1 và test2 trong phần sample (CV_internship/face_recognition/marvel_face_recognition/sample), kết quả ở trong phần result (CV_internship/face_recognition/marvel_face_recognition/step_by_step_face_recognition/result)
