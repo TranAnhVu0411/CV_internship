@@ -6,6 +6,7 @@ import joblib
 import json
 import os
 import timeit
+import torch
 import create_directory
 
 path = "/Users/trananhvu/Documents/CV/CV_internship"
@@ -54,6 +55,25 @@ class Face_Recognition:
             face2idx = json.load(json_file)
         self.idx2face = dict([(value, key) for key, value in face2idx.items()])
 
+    def convert_and_trim_bb(self, image, rect):
+        # extract the starting and ending (x, y)-coordinates of the
+        # bounding box
+        startX = rect.left()
+        startY = rect.top()
+        endX = rect.right()
+        endY = rect.bottom()
+        # ensure the bounding box coordinates fall within the spatial
+        # dimensions of the image
+        startX = max(0, startX)
+        startY = max(0, startY)
+        endX = min(endX, image.shape[1])
+        endY = min(endY, image.shape[0])
+        # compute the width and height of the bounding box
+        w = endX - startX
+        h = endY - startY
+        # return our bounding box coordinates
+        return (startX, startY, w, h)
+
     def face_detection(self, frame):
         self.preprocess_face = []
         self.bounding_box = []
@@ -67,20 +87,22 @@ class Face_Recognition:
                 preprocess = self.face_aligner.align(imgDim = 96, rgbImg = frame, bb = i, landmarkIndices=openface.AlignDlib.OUTER_EYES_AND_NOSE)
                 # end = timeit.default_timer()
                 # print("FACE "+str(idx)+" ALIGNMENT RUNTIME: "+str(end-start))
-                self.bounding_box.append((i.left(), i.top(), i.right(), i.bottom()))
+                self.bounding_box.append(self.convert_and_trim_bb(frame, i))
                 self.preprocess_face.append(preprocess)
         elif self.type == "mtcnn_facenet":
             start = timeit.default_timer()
-            rects, _ = self.mtcnn_detector.detect(frame)
+            rects = self.hog_detector(frame, 0)
             end = timeit.default_timer()
             print("FACE BB DETECT RUNTIME: "+str(end-start))
-            if not rects is None:
-                for i in rects:
-                    self.bounding_box.append(i)
-                start = timeit.default_timer()
-                self.preprocess_face.append(self.mtcnn_detector(frame))
-                end = timeit.default_timer()
-                print("FACE ALIGNMENT RUNTIME: "+str(end-start))
+            start = timeit.default_timer()
+            for idx, i in enumerate(rects):
+                box = self.convert_and_trim_bb(frame, i)
+                cropped = frame[box[1]:(box[1]+box[3]), box[0]:(box[0]+box[2])]
+                preprocess = cv2.resize(cropped, (160, 160), interpolation=cv2.INTER_AREA)
+                self.preprocess_face.append(preprocess)
+                self.bounding_box.append(box)
+            end = timeit.default_timer()
+            print("FACE ALIGNMENT RUNTIME: "+str(end-start))
     
     def extract_feature(self):
         self.feature_list = []
@@ -91,9 +113,12 @@ class Face_Recognition:
                 feature = self.openface.forward()
                 self.feature_list.append(feature.reshape(self.feature_size).tolist())
         elif self.type == "mtcnn_facenet":
-            features = self.facenet(self.preprocess_face[0])
-            for i in features:
-                self.feature_list.append(i.tolist())
+            with torch.no_grad():
+                for image in self.preprocess_face:
+                    blob = cv2.dnn.blobFromImage(image, 1./128, (160,160), (127.5, 127.5, 127.5), False, False)
+                    feature = self.facenet(torch.tensor(blob))
+                    feature = feature.detach().numpy()
+                    self.feature_list.append(feature.reshape(self.feature_size).tolist())
     
     def face_recognition(self):
         predict_idx = self.model.predict(self.feature_list)
@@ -102,26 +127,18 @@ class Face_Recognition:
             self.predict.append(self.idx2face[i])  
     
     def draw_bb_box(self, frame):
-        # start_extract_feature = timeit.default_timer()
+        start_extract_feature = timeit.default_timer()
         self.extract_feature()
-        # start_face_recognition = timeit.default_timer()
-        # print("EXTRACT FEATURE RUNTIME: "+str(start_face_recognition - start_extract_feature))
+        start_face_recognition = timeit.default_timer()
+        print("EXTRACT FEATURE RUNTIME: "+str(start_face_recognition - start_extract_feature))
         self.face_recognition()
-        # end_face_recognition = timeit.default_timer()
-        # print("FACE RECOGNITION RUNTIME: "+str(end_face_recognition - start_face_recognition))
-        for idx, _ in enumerate(self.bounding_box):
-            startX = int(self.bounding_box[idx][0])
-            startY = int(self.bounding_box[idx][1])
-            endX = int(self.bounding_box[idx][2])
-            endY = int(self.bounding_box[idx][3])
-
-            startX = max(0, startX)
-            startY = max(0, startY)
-            endX = min(endX, frame.shape[1])
-            endY = min(endY, frame.shape[0])
-
-            w = endX - startX
-            h = endY - startY
+        end_face_recognition = timeit.default_timer()
+        print("FACE RECOGNITION RUNTIME: "+str(end_face_recognition - start_face_recognition))
+        for idx, box in enumerate(self.bounding_box):
+            startX = box[0]
+            startY = box[1]
+            w = box[2]
+            h = box[3]
 
             predict_name = self.predict[idx]
             # print(predict_name)
@@ -184,7 +201,7 @@ class Face_Recognition:
 if __name__ == '__main__':
     sample_path = create_directory.sample_dir
     save_path = create_directory.result_dir
-    face_recognition = Face_Recognition("hog_openface", "svm")
-    face_recognition.face_recognition_image(os.path.join(sample_path, "test3.jpeg"), 
+    face_recognition = Face_Recognition("mtcnn_facenet", "svm")
+    face_recognition.face_recognition_image(os.path.join(sample_path, "test.webp"), 
                                              save_path)
     # face_recognition.face_recognition_video(os.path.join(sample_path, "Robert Downey Jr  Scarlett Johansson Mark Ruffalo Chris Hemsworth Interview.mp4"))
